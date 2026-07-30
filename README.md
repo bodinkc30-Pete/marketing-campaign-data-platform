@@ -1,344 +1,95 @@
 # Marketing Campaign Data Platform
 
-An end-to-end data engineering and analytics project that transforms semi-structured influencer payment data from Excel into a validated SQLite database and automated business reports.
+An end-to-end Data Engineering project for cleaning, validating, storing, analyzing, and publishing marketing campaign payment data.
+
+The pipeline transforms source-derived payment records into structured datasets, separates rejected records, loads validated data into SQLite, generates analytical reports, and exports portfolio-safe outputs without exposing real influencer names.
+
+---
 
 ## Project Overview
 
-This project demonstrates a practical data workflow for managing marketing campaign expenses.
+This project demonstrates a practical data pipeline using:
 
-The source Excel workbook contains influencer payments, shipping costs, operational expenses, repeated headers, summary rows, missing values, inconsistent formats, and sensitive personal information.
+- Python
+- Pandas
+- SQL
+- SQLite
+- CSV processing
+- Data cleaning
+- Data validation
+- Rejected-record handling
+- Database loading
+- SQL aggregation
+- Data-quality reporting
+- Privacy-aware data publishing
+- Git and GitHub
 
-The pipeline cleans, validates, classifies, and loads the data into SQLite before generating SQL analysis and CSV reports.
+The dataset contains marketing payment information such as:
 
-## Business Problem
+- Influencer
+- Budget
+- Expense type
+- Post date
+- Payment round
+- Payment status
 
-Marketing campaign payment data was stored in a semi-structured Excel workbook containing:
+The pipeline converts the source data into safe, structured, and analysis-ready outputs.
 
-- Repeated table headers
-- Summary rows mixed with transaction records
-- Missing post dates
-- Duplicate records
-- Non-numeric budget values
-- Multiple expense types stored in the same columns
-- Inconsistent date and text formats
-- Bank account and contact information
-- Operational expenses mixed with influencer payments
+---
 
-The objective was to build a reproducible pipeline that converts the raw workbook into a structured dataset suitable for SQL analysis and business reporting.
-
-## Data Pipeline
+## Pipeline Architecture
 
 ```mermaid
 flowchart LR
-    A[Raw Excel Workbook] --> B[Extract and Inspect]
-    B --> C[Transform and Clean]
-    C --> D[Rejected Records]
-    C --> E[Data Quality Validation]
-    E --> F[SQLite Database]
-    F --> G[SQL Analysis]
-    F --> H[CSV Business Report]
+    A[Source Payment Data] --> B[Extract and Inspect]
+    B --> C[Clean and Transform]
+    C --> D[Validate Records]
+
+    D -->|Valid| E[Safe Staging Data]
+    D -->|Invalid| F[Rejected Records]
+
+    E --> G[Load into SQLite]
+    G --> H[SQL Analytics]
+    G --> I[Portfolio-safe Outputs]
+
+    H --> J[Payment Summary Reports]
+    I --> K[Masked Row-level Sample]
+    I --> L[Aggregated CSV Summaries]
 ```
 
-## Pipeline Steps
+---
 
-### 1. Extract
+## Pipeline Stages
 
-The extract process inspects the source Excel workbook and identifies:
+The pipeline performs the following stages:
 
-- Worksheet names
-- Row and column counts
-- Relevant payment sections
-- Header positions
-- Data structures that require cleaning
+1. Read source-derived payment records
+2. Standardize column names
+3. Clean influencer, budget, date, round, and status fields
+4. Convert budget values into numeric data
+5. Validate required fields and business rules
+6. Separate invalid records into a rejected dataset
+7. Create a privacy-safe staging dataset
+8. Load validated records into SQLite
+9. Generate SQL-based payment summaries
+10. Export portfolio-safe aggregate reports
+11. Replace real influencer names with consistent aliases
 
-Source file:
+---
 
-```text
-data/raw/pawchoice/pawchoice_payments.xlsx
-```
+## Technologies
 
-Extraction script:
-
-```text
-src/extract/inspect_excel.py
-```
-
-### 2. Transform
-
-The transformation process converts the semi-structured workbook into a clean tabular dataset.
-
-The process:
-
-- Selects relevant business columns
-- Removes sensitive bank and contact information
-- Renames columns using database-friendly names
-- Converts budget values to numeric format
-- Converts post dates to a standard date format
-- Removes repeated headers
-- Removes summary rows
-- Removes duplicate records
-- Separates invalid records
-- Classifies different expense types
-
-Transformation script:
-
-```text
-src/transform/clean_payments.py
-```
-
-Clean output:
-
-```text
-data/processed/payments_clean.csv
-```
-
-Rejected output:
-
-```text
-data/staging/payments_rejected.csv
-```
-
-## Expense Classification
-
-The source workbook contains several expense types mixed in the same payment sections.
-
-The pipeline classifies records into the following categories:
-
-| Expense Type | Description |
+| Technology | Purpose |
 |---|---|
-| `influencer_fee` | Influencer fees and additional influencer payments |
-| `shipping` | Shipping and product delivery expenses |
-| `operations` | Operational or campaign support expenses |
-| `packaging` | Packaging-related expenses when found |
-
-Examples of corrected classifications:
-
-| Original Description | Budget | Expense Type |
-|---|---:|---|
-| Shipping-related record | 56 บาท | `shipping` |
-| Shipping-related record | 100 บาท | `shipping` |
-| Shipping-related record | 177 บาท | `shipping` |
-| Operational expense | 65 บาท | `operations` |
-| Extra Larisa | 500 บาท | `influencer_fee` |
-
-This prevents small operational expenses from being incorrectly reported as influencer fees.
-
-### 3. Validate
-
-The validation process checks the cleaned dataset before loading it into the database.
-
-Validation rules include:
-
-- No duplicate rows
-- Influencer names must not be missing
-- Budgets must not be missing
-- Budgets must be greater than zero
-- Expense types must be valid
-- Critical validation failures stop the pipeline
-
-Missing post dates are reported but are allowed because the source workbook does not contain a post date for every record.
-
-Validation script:
-
-```text
-src/validation/validate_payments.py
-```
-
-Allowed expense types:
-
-```text
-influencer_fee
-shipping
-operations
-packaging
-```
-
-### 4. Load
-
-Validated records are loaded into SQLite.
-
-Load script:
-
-```text
-src/load/load_payments.py
-```
-
-Database file:
-
-```text
-database/marketing_analytics.db
-```
-
-Main table:
-
-```text
-payments
-```
-
-Database schema:
-
-```text
-schema/create_tables.sql
-```
-
-## Database Schema
-
-The `payments` table contains:
-
-| Column | Description |
-|---|---|
-| `payment_id` | Unique payment identifier |
-| `influencer_name` | Influencer name or expense description |
-| `budget` | Expense amount in Thai baht |
-| `expense_type` | Classified expense category |
-| `post_date` | Influencer post date |
-| `payment_round` | Payment processing round |
-| `payment_status` | Current payment status |
-
-SQL schema:
-
-```sql
-CREATE TABLE IF NOT EXISTS payments (
-    payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    influencer_name TEXT NOT NULL,
-    budget REAL NOT NULL CHECK (budget > 0),
-    expense_type TEXT NOT NULL,
-    post_date DATE,
-    payment_round TEXT,
-    payment_status TEXT
-);
-```
-
-### 5. SQL Analysis
-
-SQL queries are stored in the `queries` directory.
-
-```text
-queries/
-├── 01_payment_analysis.sql
-└── 02_data_quality_checks.sql
-```
-
-The SQL analysis includes:
-
-- Expense totals by category
-- Expense counts by category
-- Average expense amount
-- Lowest influencer payments
-- Highest influencer payments
-- Duplicate detection
-- Invalid budget detection
-- Missing-value checks
-- Unknown expense-type detection
-
-Example query:
-
-```sql
-SELECT
-    expense_type,
-    COUNT(*) AS expense_count,
-    SUM(budget) AS total_budget,
-    ROUND(AVG(budget), 2) AS average_budget
-FROM payments
-GROUP BY expense_type
-ORDER BY total_budget DESC;
-```
-
-### 6. Report
-
-The pipeline exports a summary report from SQLite into CSV.
-
-Report script:
-
-```text
-src/load/export_payment_summary.py
-```
-
-Generated report:
-
-```text
-reports/payment_summary.csv
-```
-
-## Latest Data Quality Results
-
-Latest successful pipeline validation:
-
-| Check | Result |
-|---|---:|
-| Clean rows | 268 |
-| Rejected rows | 515 |
-| Duplicate rows | 0 |
-| Missing influencer names | 0 |
-| Missing budgets | 0 |
-| Invalid budgets | 0 |
-| Invalid expense types | 0 |
-| Missing post dates | 97 |
-
-The 97 missing post dates remain as `NULL`.
-
-No artificial dates were created because doing so would make the dataset inaccurate.
-
-## Business Insights
-
-Latest expense summary:
-
-| Expense Type | Records | Total Budget | Average Budget |
-|---|---:|---:|---:|
-| Influencer fee | 264 | 459,800 บาท | 1,741.67 บาท |
-| Shipping | 3 | 333 บาท | 111.00 บาท |
-| Operations | 1 | 65 บาท | 65.00 บาท |
-
-The current lowest verified influencer-related payment is:
-
-```text
-500 บาท
-```
-
-The record is associated with:
-
-```text
-extra Larisa
-```
-
-Most of the next lowest influencer payments begin at approximately:
-
-```text
-700 บาท
-```
-
-Values such as 56, 65, 100, and 177 บาท were investigated and classified as shipping or operational expenses rather than influencer fees.
-
-## Automated Pipeline
-
-The complete pipeline can be executed with one command:
-
-```bash
-python run_pipeline.py
-```
-
-The pipeline executes the following steps:
-
-```text
-Transform
-→ Validate
-→ Load
-→ Export Report
-```
-
-Pipeline file:
-
-```text
-run_pipeline.py
-```
-
-Expected completion message:
-
-```text
-Pipeline completed successfully.
-```
-
-The pipeline stops automatically if a critical data quality rule fails.
+| Python | Pipeline orchestration and scripting |
+| Pandas | Data cleaning, validation, and transformation |
+| SQL | Aggregation and analytical queries |
+| SQLite | Local relational database |
+| CSV | Staging, rejected, report, and portfolio outputs |
+| Git | Version control |
+| GitHub | Portfolio publishing |
+
+---
 
 ## Project Structure
 
@@ -346,205 +97,574 @@ The pipeline stops automatically if a critical data quality rule fails.
 marketing-campaign-data-platform/
 ├── data/
 │   ├── raw/
-│   │   └── pawchoice/
-│   │       └── pawchoice_payments.xlsx
 │   ├── staging/
+│   │   ├── payments_rejected.csv
 │   │   ├── payments_safe.csv
-│   │   └── payments_rejected.csv
+│   │   └── .gitkeep
 │   └── processed/
-│       └── payments_clean.csv
+│       ├── payments_clean.csv
+│       └── .gitkeep
 ├── database/
-│   └── marketing_analytics.db
+│   ├── marketing_analytics.db
+│   └── marketing_analytics.sqbpro
 ├── diagrams/
 ├── queries/
-│   ├── 01_payment_analysis.sql
-│   └── 02_data_quality_checks.sql
 ├── reports/
-│   └── payment_summary.csv
+│   ├── portfolio_outputs/
+│   │   ├── sample_data_quality_summary.csv
+│   │   ├── sample_expense_type_summary.csv
+│   │   ├── sample_masked_payment_records.csv
+│   │   ├── sample_monthly_payment_summary.csv
+│   │   ├── sample_payment_round_summary.csv
+│   │   └── sample_payment_status_summary.csv
+│   ├── payment_summary.csv
+│   └── .gitkeep
 ├── schema/
 │   └── create_tables.sql
 ├── src/
+│   ├── export/
+│   │   └── export_portfolio_outputs.py
 │   ├── extract/
-│   │   └── inspect_excel.py
+│   ├── load/
+│   │   ├── export_payment_summary.py
+│   │   └── load_payments.py
 │   ├── transform/
 │   │   └── clean_payments.py
-│   ├── validation/
-│   │   └── validate_payments.py
-│   ├── load/
-│   │   ├── load_payments.py
-│   │   └── export_payment_summary.py
-│   └── utils/
+│   ├── utils/
+│   └── validation/
+│       └── validate_payments.py
 ├── tests/
 ├── .gitignore
+├── image.png
 ├── README.md
 ├── requirements.txt
 └── run_pipeline.py
 ```
 
-## Technologies Used
+Raw data, source-derived row-level files, and the SQLite database are excluded from GitHub through `.gitignore`.
 
-- Python
-- Pandas
-- SQLite
-- SQL
-- OpenPyXL
-- PyPDF
-- DB Browser for SQLite
-- Visual Studio Code
-- Mermaid
+Only portfolio-safe aggregated outputs and masked sample records are published.
+
+---
+
+## Data Model
+
+Validated payment data is loaded into the SQLite table:
+
+```text
+payments
+```
+
+The table contains the following columns:
+
+| Column | Type | Description |
+|---|---|---|
+| `payment_id` | INTEGER | Unique payment identifier |
+| `influencer_name` | TEXT | Influencer name stored locally |
+| `budget` | REAL | Payment or expense amount |
+| `expense_type` | TEXT | Category of marketing expense |
+| `post_date` | DATE | Campaign post date |
+| `payment_round` | TEXT | Scheduled payment round |
+| `payment_status` | TEXT | Current payment status |
+
+The real `influencer_name` field remains inside the local database and is not exported to the public portfolio outputs.
+
+---
+
+## Dataset Summary
+
+The SQLite database contains:
+
+```text
+Total payment records: 268
+Date range: 2026-01-23 to 2026-05-27
+```
+
+### Expense Types
+
+| Expense Type | Records | Total Budget |
+|---|---:|---:|
+| Influencer fee | 264 | 459,800.00 |
+| Shipping | 3 | 333.00 |
+| Operations | 1 | 65.00 |
+
+The majority of records belong to influencer campaign fees.
+
+---
+
+## Payment Status Summary
+
+| Payment Status | Records | Total Budget |
+|---|---:|---:|
+| Paid | 188 | 335,600.00 |
+| Unpaid | 45 | 88,900.00 |
+| Unspecified | 35 | 35,698.00 |
+
+Payment statuses are normalized into three portfolio reporting groups:
+
+```text
+ทำจ่ายแล้ว
+ยังไม่ทำจ่าย
+ไม่ระบุสถานะ
+```
+
+Records without a payment status are retained and reported instead of being silently removed.
+
+---
+
+## Rejected-record Handling
+
+The pipeline separates invalid or unusable records from valid records.
+
+Rejected records are stored in:
+
+```text
+data/staging/payments_rejected.csv
+```
+
+Validated and privacy-safe staging records are stored in:
+
+```text
+data/staging/payments_safe.csv
+```
+
+This design prevents invalid records from being loaded silently into the analytical database.
+
+It also makes it possible to:
+
+- Review rejected records
+- Trace data-quality problems
+- Correct source issues
+- Reprocess failed records later
+- Compare valid and rejected record counts
+
+---
+
+## Portfolio Outputs
+
+Portfolio-safe CSV files are generated from the SQLite database with:
+
+```bash
+python src/export/export_portfolio_outputs.py
+```
+
+Output directory:
+
+```text
+reports/portfolio_outputs/
+```
+
+The export process creates six files.
+
+---
+
+### `sample_masked_payment_records.csv`
+
+Contains 20 row-level sample records.
+
+The real influencer names are replaced with consistent aliases such as:
+
+```text
+influencer_087
+influencer_094
+influencer_194
+```
+
+Included columns:
+
+- Influencer alias
+- Budget
+- Expense type
+- Post date
+- Payment round
+- Payment status
+
+The same influencer receives the same alias inside the generated sample, allowing record-level review without publishing the real identity.
+
+---
+
+### `sample_payment_status_summary.csv`
+
+Summarizes payment records by payment status.
+
+Included metrics:
+
+- Payment status
+- Payment count
+- Total budget
+- Average budget
+- Minimum budget
+- Maximum budget
+
+Missing statuses are reported as:
+
+```text
+ไม่ระบุสถานะ
+```
+
+---
+
+### `sample_expense_type_summary.csv`
+
+Summarizes marketing expenses by expense type.
+
+Included metrics:
+
+- Expense type
+- Expense count
+- Total budget
+- Average budget
+- Percentage of total budget
+
+This output helps identify which expense categories consume the largest portion of the marketing budget.
+
+---
+
+### `sample_payment_round_summary.csv`
+
+Summarizes payment activity by payment round.
+
+Included metrics:
+
+- Payment round
+- Payment count
+- Total budget
+- Paid budget
+- Unpaid budget
+- Budget with unspecified payment status
+
+The current dataset contains 12 payment-round groups.
+
+---
+
+### `sample_monthly_payment_summary.csv`
+
+Summarizes payment records by post month.
+
+Included metrics:
+
+- Post month
+- Payment count
+- Total budget
+- Average budget
+- Paid budget
+- Unpaid budget
+
+The current export contains five monthly groups based on available post dates.
+
+---
+
+### `sample_data_quality_summary.csv`
+
+Contains aggregate data-quality checks for the `payments` table.
+
+Checks include:
+
+- Total record count
+- Missing influencer values
+- Invalid or negative budgets
+- Missing expense types
+- Missing post dates
+- Invalid post dates
+- Missing payment statuses
+- Unexpected payment statuses
+- Duplicate payment identifiers
+
+This report makes data-quality issues visible instead of hiding or silently correcting them.
+
+---
+
+## Privacy and Masking Strategy
+
+Real influencer names are not published in the portfolio outputs.
+
+The masked sample uses aliases generated with a window function:
+
+```text
+influencer_001
+influencer_002
+influencer_003
+```
+
+This approach provides several benefits:
+
+- Protects personal and business-sensitive information
+- Preserves row-level analytical usefulness
+- Keeps repeated influencer records traceable
+- Demonstrates privacy-aware Data Engineering
+- Prevents accidental disclosure through GitHub
+
+Aggregated reports do not contain influencer names.
+
+---
+
+## SQL Techniques Demonstrated
+
+The portfolio export layer uses SQL techniques including:
+
+- `COUNT`
+- `SUM`
+- `AVG`
+- `MIN`
+- `MAX`
+- `ROUND`
+- `CASE`
+- `COALESCE`
+- `NULLIF`
+- `TRIM`
+- `GROUP BY`
+- `ORDER BY`
+- Common Table Expressions
+- Window functions
+- `DENSE_RANK`
+- Conditional aggregation
+- Date grouping with `SUBSTR`
+
+Example alias generation:
+
+```sql
+printf(
+    'influencer_%03d',
+    DENSE_RANK() OVER (
+        ORDER BY influencer_name
+    )
+)
+```
+
+This creates consistent masked aliases without publishing the original names.
+
+---
+
+## Data Quality Principles
+
+The project follows these data-quality principles:
+
+### Completeness
+
+Required fields are checked for missing values.
+
+### Validity
+
+Budgets and dates are checked for invalid formats and values.
+
+### Consistency
+
+Payment statuses and expense types are standardized before analysis.
+
+### Traceability
+
+Rejected records remain available locally for investigation.
+
+### Uniqueness
+
+Payment identifiers are checked for duplicates.
+
+### Transparency
+
+Missing values are reported explicitly rather than silently removed.
+
+---
+
+## Challenges
+
+### Sensitive Influencer Information
+
+The source data contains real influencer names and campaign payment details.
+
+Publishing these values directly would create privacy and business-confidentiality risks.
+
+The project solves this by:
+
+- Excluding source-derived files from GitHub
+- Keeping the SQLite database local
+- Exporting aggregate summaries
+- Replacing real names with aliases
+- Publishing only portfolio-safe CSV files
+
+### Missing Payment Statuses
+
+Some records do not contain a payment status.
+
+Instead of deleting these records, the export layer groups them under:
+
+```text
+ไม่ระบุสถานะ
+```
+
+This preserves the original record count and highlights incomplete operational data.
+
+### Inconsistent Payment Rounds
+
+Payment-round values contain multiple Thai date formats and missing values.
+
+The project preserves the source meaning while grouping blank rounds under:
+
+```text
+ไม่ระบุรอบจ่าย
+```
+
+### Row-level Credibility Without PII Exposure
+
+Aggregate summaries alone may not show that the pipeline processes real row-level records.
+
+The project therefore includes a masked 20-row sample that keeps the analytical structure while protecting identities.
+
+---
+
+## Lessons Learned
+
+Through this project, I learned how to:
+
+- Build a multi-stage marketing payment pipeline
+- Clean and standardize payment records with Pandas
+- Separate valid and rejected data
+- Load validated records into SQLite
+- Design a relational payment table
+- Write SQL aggregation queries
+- Use conditional aggregation for payment analysis
+- Generate monthly and payment-round summaries
+- Detect missing and unexpected values
+- Create privacy-safe row-level samples
+- Mask identities with SQL window functions
+- Protect databases and source-derived files with `.gitignore`
+- Publish safe analytical outputs to GitHub
+- Preserve data traceability and operational transparency
+
+---
 
 ## Installation
 
-Install the required Python packages:
+Clone the repository:
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/bodinkc30-Pete/marketing-campaign-data-platform.git
 ```
 
-Current dependencies:
-
-```text
-pandas
-openpyxl
-pypdf
-```
-
-## Running Individual Steps
-
-Run transformation:
+Move into the project directory:
 
 ```bash
-python src/transform/clean_payments.py
+cd marketing-campaign-data-platform
 ```
 
-Run validation:
+Create a virtual environment:
 
 ```bash
-python src/validation/validate_payments.py
+python -m venv .venv
 ```
 
-Load data into SQLite:
+Activate the virtual environment on Windows:
 
 ```bash
-python src/load/load_payments.py
+.venv\Scripts\activate
 ```
 
-Export the summary report:
+Install the required packages:
 
 ```bash
-python src/load/export_payment_summary.py
+python -m pip install -r requirements.txt
 ```
 
-Run the complete automated pipeline:
+---
+
+## Run the Pipeline
+
+Run the complete pipeline with:
 
 ```bash
 python run_pipeline.py
 ```
 
-## Data Privacy
+The pipeline performs the main stages:
 
-Sensitive information from the original workbook is not included in the processed dataset or database.
+```text
+Extract
+→ Clean
+→ Validate
+→ Reject invalid records
+→ Load into SQLite
+→ Export reports
+```
 
-Excluded information includes:
+---
 
-- Bank account numbers
-- Phone numbers
-- Addresses
-- Personal contact details
-- Other sensitive payment information
+## Export Portfolio Outputs
 
-Raw source files should not be committed to a public repository.
+After the SQLite database has been created, run:
 
-## Data Engineering Responsibilities Demonstrated
+```bash
+python src/export/export_portfolio_outputs.py
+```
 
-This project demonstrates practical Data Engineering work, including:
+Expected result:
 
-- Inspecting semi-structured source data
-- Designing a repeatable data pipeline
-- Cleaning inconsistent records
-- Separating accepted and rejected data
-- Applying business classification rules
-- Enforcing data quality checks
-- Designing a relational database table
-- Loading data into SQLite
-- Automating pipeline execution
-- Generating reusable reports
-- Protecting sensitive information
+```text
+[SUCCESS] สร้าง sample_masked_payment_records.csv: 20 แถว
+[SUCCESS] สร้าง sample_payment_status_summary.csv: 3 แถว
+[SUCCESS] สร้าง sample_expense_type_summary.csv: 3 แถว
+[SUCCESS] สร้าง sample_payment_round_summary.csv: 12 แถว
+[SUCCESS] สร้าง sample_monthly_payment_summary.csv: 5 แถว
+[SUCCESS] สร้าง sample_data_quality_summary.csv: 1 แถว
+[SUCCESS] สร้าง Portfolio Outputs ครบทุกไฟล์แล้ว
+[INFO] จำนวนไฟล์: 6
+[INFO] จำนวนแถวรวม: 44
+```
 
-## Data Analyst Responsibilities Demonstrated
+---
 
-This project also demonstrates Data Analyst work, including:
+## Repository Safety
 
-- Investigating unusual budget values
-- Identifying incorrect expense classifications
-- Using SQL to find minimum and maximum payments
-- Summarizing spending by expense category
-- Calculating averages and totals
-- Validating business assumptions against source data
-- Producing reporting-ready CSV outputs
+The repository excludes private, source-derived, and generated data.
 
-## Key Challenges
+Excluded items include:
 
-### Semi-structured Excel data
+```text
+data/raw/
+data/staging/payments_safe.csv
+data/staging/payments_rejected.csv
+data/processed/payments_clean.csv
+database/marketing_analytics.db
+reports/payment_summary.csv
+.venv/
+.env
+.vscode/
+```
 
-The workbook contained multiple data blocks, repeated headers, summary rows, empty rows, and mixed expense types.
+Only portfolio-safe files inside this directory are published:
 
-The pipeline required custom business rules instead of a simple direct import.
+```text
+reports/portfolio_outputs/
+```
 
-### Incorrect expense classification
+The `.gitignore` configuration prevents real influencer names, the local SQLite database, staging records, rejected records, and complete processed data from being committed.
 
-Shipping and operational expenses initially appeared as influencer payments.
+---
 
-SQL investigation identified these anomalies and additional classification rules were added.
+## Key Data Engineering Skills Demonstrated
 
-### Summary rows mixed with transactions
+- Data Engineering
+- ETL
+- Python
+- Pandas
+- SQL
+- SQLite
+- Data cleaning
+- Data transformation
+- Data validation
+- Data quality
+- Rejected-record handling
+- Database design
+- Database loading
+- Conditional aggregation
+- Window functions
+- Data masking
+- Data privacy
+- Portfolio-safe publishing
+- Git and GitHub
 
-Some summary values were incorrectly interpreted as influencer names and budgets.
+---
 
-The pipeline filters records whose names do not contain valid Thai or English letters.
+## Author
 
-### Missing post dates
+Data Engineering Portfolio Project
 
-Some valid transactions do not contain post dates.
-
-These values remain `NULL` instead of being replaced with invented dates.
-
-### Sensitive information
-
-The original workbook includes personal and payment information.
-
-Only business-safe fields are retained in the processed dataset.
-
-## Lessons Learned
-
-This project demonstrates that data engineering involves more than moving data from one system to another.
-
-Reliable pipelines require:
-
-- Understanding the source structure
-- Investigating anomalies
-- Defining clear business rules
-- Protecting sensitive information
-- Separating valid and invalid records
-- Validating data before loading
-- Designing reproducible workflows
-- Using SQL to verify transformation results
-- Automating repeated processing steps
-
-## Future Improvements
-
-Potential future improvements include:
-
-- Add automated unit tests
-- Add structured logging
-- Add rejection reasons for every invalid record
-- Create separate influencer and campaign tables
-- Add campaign identifiers
-- Add a date dimension table
-- Add indexes for frequently queried columns
-- Build a Power BI or Tableau dashboard
-- Migrate SQLite to PostgreSQL
-- Schedule the pipeline with Apache Airflow
-- Add configuration files for business rules
-- Add historical pipeline run logs
-- Add automated data quality reports
+Focused on building reliable, traceable, privacy-aware, and portfolio-safe data pipelines using Python, Pandas, SQL, and SQLite.
