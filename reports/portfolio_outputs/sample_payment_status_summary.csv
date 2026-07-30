@@ -1,0 +1,4 @@
+﻿payment_status,payment_count,total_budget,average_budget,minimum_budget,maximum_budget
+ทำจ่ายแล้ว,188,335600.0,1785.11,700.0,21000.0
+ยังไม่ทำจ่าย,45,88900.0,1975.56,1000.0,3500.0
+ไม่ระบุสถานะ,35,35698.0,1019.94,56.0,2500.0
