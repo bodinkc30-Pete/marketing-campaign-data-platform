@@ -1,3 +1,9 @@
+## Public evidence and reproducibility boundary (reviewed 2026-09-18)
+
+The committed data-quality snapshot contains **268 payment rows**. It records **97 missing post dates** and **35 missing payment statuses**; these are retained as visible quality findings rather than silently removed.
+
+The repository is portfolio-safe and does not currently publish a hosted GitHub Actions workflow or automated regression suite. A fresh clone excludes private source data and the generated SQLite database; a full rerun therefore requires local input files. The committed masked/aggregated outputs are evidence snapshots, not a claim of live production execution. A synthetic fixture, automated tests, and CI workflow are appropriate future extensions.
+
 # Marketing Campaign Data Platform
 
 An end-to-end Data Engineering project for cleaning, validating, storing, analyzing, and publishing marketing campaign payment data.
